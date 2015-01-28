@@ -1,0 +1,69 @@
+#!/bin/sh
+
+list_stashes(){
+    git fetch --all > /dev/null
+    git branch | cut -c3- | grep "^stash\/"
+}
+
+next_stash(){
+    echo $(($(list_stashes | wc -l)+1))
+}
+
+create_stash(){
+    detached=$(git branch | grep "^\*" | cut -c3- | grep "^(")
+    if [ "$detached" ]; then
+        original_commit=$(git rev-parse --verify HEAD)
+    else
+        branch=$(git branch | grep "^\*" | cut -c3-)
+    fi
+
+    git stash
+    git checkout -b stash/$(next_stash)
+    git stash apply
+    git commit -am "stash/$(next_stash)"
+    if [ "$original_commit" ]; then
+        git checkout "$original_commit"
+    else
+        git checkout "$branch"
+    fi
+    git stash pop
+}
+
+apply_stash(){
+    git fetch --all
+    if [ $(git stash | grep -v "^No") ]; then
+        pop_stash=yes
+    fi
+    git merge --squash stash/$1
+    git reset
+    if [ "$pop_stash" ]; then
+        git stash pop
+    fi
+}
+
+push_stashes(){
+    for stash in $(git branch | cut -c3- | grep "^stash\/"); do
+        git push origin $stash
+    done
+}
+
+for opt in "$@"
+do
+    case $opt in
+        list)
+        list_stashes
+        ;;
+        create)
+        create_stash
+        ;;
+        apply)
+        apply_stash $2
+        ;;
+        push)
+        push_stashes
+        ;;
+        *)
+            echo "Unknown option: $1, $2"
+        ;;
+    esac
+done
