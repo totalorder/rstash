@@ -1,8 +1,8 @@
 #!/bin/sh
 
 list_stashes(){
-    git fetch --all > /dev/null
-    git branch | cut -c3- | grep "^stash\/"
+    git fetch > /dev/null
+    git branch -r | cut -c3- | grep "^origin/stash\/" | cut -d "/" -f 2-
 }
 
 next_stash(){
@@ -30,10 +30,10 @@ create_stash(){
 }
 
 apply_stash(){
-    git fetch --all
     if [ $(git stash | grep -v "^No") ]; then
         pop_stash=yes
     fi
+    git fetch origin stash/$1:stash/$1
     git merge --squash stash/$1
     git reset
     if [ "$pop_stash" ]; then
@@ -52,15 +52,19 @@ do
     case $opt in
         list)
         list_stashes
+        exit 0
         ;;
         create)
         create_stash
+        exit 0
         ;;
         apply)
         apply_stash $2
+        exit 0
         ;;
         push)
         push_stashes
+        exit 0
         ;;
         *)
             echo "Unknown option: $1, $2"
